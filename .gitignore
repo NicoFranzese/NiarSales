@@ -1,0 +1,25 @@
+# Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# PHP
+api/vendor/
+
+# Configuraciones sensibles
+.env
+.env.*
+api/.env
+api/config/database.php
+api/config/agent.php
+
+# Temporales
+*.log
+.DS_Store
+Thumbs.db
+
+# Angular cache
+frontend/.angular/
+
+# VS Code - configuración local
+frontend/.vscode/mcp.json

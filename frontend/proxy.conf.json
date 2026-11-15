@@ -1,0 +1,9 @@
+{
+  "/api": {
+    "target": "https://niarapp.com/NiarSales",
+    "secure": true,
+    "changeOrigin": true,
+    "cookiePathRewrite": "/",
+    "logLevel": "debug"
+  }
+}
