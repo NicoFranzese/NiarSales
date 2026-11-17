@@ -12,6 +12,7 @@ export interface Prospect {
   sitio_web?: string | null; instagram?: string | null; facebook?: string | null;
   direccion?: string | null; localidad?: string | null; provincia?: string | null;
   estado?: string; prioridad?: string; score?: number | null; mensaje_sugerido_ia?: string | null; notas?: string | null;
+ ada_puntuacion?:number|null; ada_prioridad?:string|null; ada_resumen?:string|null; ada_recomendacion?:string|null; ada_analisis_json?:string|null; ada_analizado_at?:string|null;
 }
 @Injectable({ providedIn: 'root' })
 export class ProspectService {

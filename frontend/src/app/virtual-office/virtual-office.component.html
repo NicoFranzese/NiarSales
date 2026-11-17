@@ -1,0 +1,237 @@
+<div class="office-page">
+  <div class="office-heading">
+    <div><small class="eyebrow">NIARSALES INTELLIGENCE</small><h1>Oficina virtual</h1><p>Un espacio de trabajo para supervisar a los agentes y sus tareas reales.</p></div>
+    <div class="office-live"><span class="live-dot"></span> Actualización automática · {{ lastUpdate() || 'Conectando...' }} <button type="button" (click)="refresh()" aria-label="Actualizar oficina">↻</button></div>
+  </div>
+
+  @if (error()) { <div class="office-error">{{ error() }}</div> }
+  @if (loading()) { <div class="office-loading">Preparando la oficina...</div> }
+
+  <section class="mission-console" aria-labelledby="mission-title">
+    <div class="mission-intro"><span class="nora-avatar" aria-hidden="true"><i></i></span><div><small class="eyebrow">ASISTENTE DE DIRECCIÓN</small><h2 id="mission-title">Nora, coordinadora</h2><p>Definí una misión. Nora se la asigna a Ivo y supervisa el resultado.</p></div></div>
+    <form class="mission-form" (ngSubmit)="delegateMission()">
+      <label>Rubro<input name="rubro" [ngModel]="missionRubro()" (ngModelChange)="missionRubro.set($event)" placeholder="Ej. Restaurantes" required></label>
+      <label>Localidad<input name="localidad" [ngModel]="missionLocalidad()" (ngModelChange)="missionLocalidad.set($event)" placeholder="Ej. Avellaneda" required></label>
+      <label class="quantity-field">Cantidad<select name="cantidad" [ngModel]="missionCantidad()" (ngModelChange)="missionCantidad.set(+$event)"><option [ngValue]="3">3</option><option [ngValue]="5">5</option><option [ngValue]="8">8</option><option [ngValue]="10">10</option></select></label>
+      <button type="submit" [disabled]="missionSending() || !!activeExecution()">{{ missionSending() ? 'Nora e Ivo trabajando…' : activeExecution() ? 'Hay una misión en curso' : 'Asignar misión a Nora' }}</button>
+    </form>
+    @if (missionSending()) { <p class="mission-feedback success mission-running" role="status">Nora está coordinando e Ivo está investigando. La oficina se actualizará con los resultados.</p> }
+    @if (missionMessage()) { <p class="mission-feedback success">{{ missionMessage() }}</p> }
+    @if (missionError()) { <p class="mission-feedback error">{{ missionError() }}</p> }
+    <p class="mission-note">En esta versión Nora coordina una investigación y delega la búsqueda a Ivo. El análisis independiente, las ventas y los seguimientos se incorporarán en próximas etapas.</p>
+  </section>
+
+  <section class="ada-console" aria-labelledby="ada-title">
+    <div class="ada-copy"><small class="eyebrow">ANÁLISIS COMERCIAL</small><h2 id="ada-title">Ada, analista de oportunidades</h2><p>Ada revisa prospectos que Ivo ya guardó y todavía no fueron evaluados por ella. No realiza búsquedas nuevas ni modifica la puntuación original de Ivo.</p></div>
+    <div class="ada-selection">
+      <form class="ada-search-form" (ngSubmit)="loadAdaCandidates()">
+        <label>Buscar prospecto
+          <input name="adaSearch" [ngModel]="adaSearch()" (ngModelChange)="adaSearch.set($event)" placeholder="Nombre del comercio, rubro o localidad"/>
+        </label>
+        <button type="submit" class="ada-search-button" [disabled]="adaCandidatesLoading()">Buscar</button>
+      </form>
+      <div class="ada-count-cards">
+        <button type="button" class="ada-count-card" [class.active]="adaView() === 'pending'" (click)="setAdaView('pending')">
+          <strong>{{ number(adaCounts().pending) }}</strong><span>Pendientes de Ada</span>
+        </button>
+        <button type="button" class="ada-count-card" [class.active]="adaView() === 'analyzed'" (click)="setAdaView('analyzed')">
+          <strong>{{ number(adaCounts().analyzed) }}</strong><span>Ya analizados</span>
+        </button>
+        <div class="ada-count-total"><strong>{{ number(adaCounts().total) }}</strong><span>Total de prospectos</span></div>
+      </div>
+      <div class="ada-selection-heading">
+        <div><b>{{ adaView() === 'pending' ? 'Prospectos pendientes de análisis' : 'Prospectos ya analizados por Ada' }}</b><small>{{ adaView() === 'pending' ? 'Elegí exactamente cuáles querés que Ada evalúe. Máximo 5 por tarea.' : 'Consultá las evaluaciones que Ada ya realizó.' }}</small></div>
+        @if (adaView() === 'pending') {
+          <div class="ada-selection-actions"><button type="button" (click)="selectVisibleAdaCandidates()" [disabled]="!adaCandidates().length">Seleccionar primeros 5</button><button type="button" (click)="clearAdaSelection()" [disabled]="!adaSelectedIds().length">Limpiar</button></div>
+        }
+      </div>
+      @if (adaCandidatesLoading()) { <p class="ada-candidates-state">Cargando prospectos…</p> }
+      @if (!adaCandidatesLoading() && !adaCandidates().length) { <p class="ada-candidates-state">{{ adaView() === 'pending' ? 'No hay prospectos pendientes que coincidan con la búsqueda.' : 'Todavía no hay prospectos analizados que coincidan con la búsqueda.' }}</p> }
+      <div class="ada-candidate-list">
+        @for (candidate of adaCandidates(); track candidate.id) {
+          <label class="ada-candidate" [class.ada-candidate-analyzed]="adaView() === 'analyzed'">
+            @if (adaView() === 'pending') {
+              <input type="checkbox" [checked]="isAdaSelected(candidate.id)" (change)="toggleAdaCandidate(candidate.id, $any($event.target).checked)" [disabled]="!isAdaSelected(candidate.id) && adaSelectedIds().length >= 5"/>
+            }
+            <span class="ada-candidate-main"><b>{{ candidate.nombre_comercial }}</b><small>{{ candidate.rubro || 'Rubro sin clasificar' }} · {{ candidate.localidad || 'Localidad no informada' }}{{ candidate.provincia ? ', ' + candidate.provincia : '' }}</small>
+              @if (adaView() === 'pending') { <small>Prospecto #{{ candidate.id }} · Evaluación Ivo: {{ candidate.puntuacion ?? 'Sin puntuación' }}/100 · Prioridad: {{ candidate.prioridad || 'Sin prioridad' }}</small> }
+              @else { <small>Prospecto #{{ candidate.id }} · Evaluación Ada: {{ candidate.ada_puntuacion ?? 'Sin puntuación' }}/100 · Prioridad: {{ candidate.ada_prioridad || 'Sin prioridad' }} · {{ eventTime(candidate.ada_analizado_at) }}</small><small>{{ candidate.ada_resumen || 'Sin resumen registrado.' }}</small> }
+            </span>
+            <span class="ada-candidate-status" [class.analyzed]="adaView() === 'analyzed'">{{ adaView() === 'pending' ? 'Pendiente' : 'Analizado por Ada' }}</span>
+          </label>
+        }
+      </div>
+      @if (adaView() === 'pending') {
+        <div class="ada-selection-footer">
+          <span>{{ adaSelectedIds().length }} de 5 seleccionados · {{ adaCandidates().length }} pendientes en esta vista</span>
+          <button type="button" (click)="analyzeWithAda()" [disabled]="adaSending() || missionSending() || !!activeExecution() || !adaSelectedIds().length">{{ adaSending() ? 'Ada está analizando…' : 'Asignar análisis a Ada' }}</button>
+        </div>
+      }
+    </div>
+    @if (adaSending()) { <p class="ada-feedback working" role="status">Ada está revisando la información disponible de los prospectos. La oficina se actualizará al finalizar.</p> }
+    @if (adaMessage()) { <p class="ada-feedback success">{{ adaMessage() }}</p> }
+    @if (adaError()) { <p class="ada-feedback error">{{ adaError() }}</p> }
+  </section>
+
+  <section class="budget-console" aria-labelledby="budget-title">
+    <div class="budget-heading">
+      <div><small class="eyebrow">CONTROL DE COSTOS</small><h2 id="budget-title">Consumo de IA</h2><p>Uso registrado por NiarSales durante el mes en curso. Importes en dólares estadounidenses.</p></div>
+      <button type="button" class="budget-refresh" (click)="loadBudget()">Actualizar consumo</button>
+    </div>
+    @if (budgetError()) { <p class="budget-error">{{ budgetError() }}</p> }
+    @if (budget(); as b) {
+      <div class="budget-main">
+        <div class="budget-spend"><span>Gastado este mes</span><strong>{{ money(b.spent_usd) }}</strong><small>Presupuesto mensual: {{ money(b.monthly_limit_usd) }}</small></div>
+        <div class="budget-progress" role="progressbar" [attr.aria-valuenow]="budgetPercent(b)" aria-valuemin="0" aria-valuemax="100"><span [style.width.%]="budgetPercent(b)"></span></div>
+        <div class="budget-metrics">
+          <div><span>Disponible</span><b>{{ money(b.available_usd) }}</b></div>
+          <div><span>Reservado</span><b>{{ money(b.reserved_usd) }}</b></div>
+          <div><span>Tokens de entrada</span><b>{{ number(b.input_tokens) }}</b></div>
+          <div><span>Tokens de salida</span><b>{{ number(b.output_tokens) }}</b></div>
+          <div><span>Total de tokens</span><b>{{ number(b.total_tokens) }}</b></div>
+          <div><span>Llamadas a IA</span><b>{{ number(b.requests) }}</b></div>
+        </div>
+        <p class="budget-footnote">Mes de facturación: {{ b.month }} · {{ b.enabled ? 'Uso de IA habilitado' : 'Uso de IA deshabilitado' }} · Los importes reservados se confirman al finalizar cada llamada.</p>
+      </div>
+    } @else if (!budgetError()) { <p class="budget-loading">Consultando presupuesto y consumo...</p> }
+  </section>
+
+  <section class="office-floor" aria-label="Plano de la oficina de agentes">
+    <div class="floor-topline"><span>PLANTA PRINCIPAL</span><span>NIARSALES HQ · V2</span></div>
+    <div class="office-grid">
+      @for (agent of agents(); track agent.slug) {
+        <article class="room" [class.room-active]="agentIsWorking(agent.slug)" [class.room-planned]="!isEnabled(agent.habilitado)">
+          <div class="room-label"><span>{{ agent.sala }}</span><span class="room-status" [class]="stateClass(agent.slug)">{{ stateLabel(agent.slug) }}</span></div>
+          <div class="room-scene">
+            <div class="window-light"></div>
+            <div class="desk"><div class="monitor"><i></i><i></i><i></i></div><div class="desk-top"></div><div class="desk-leg"></div></div>
+            <div class="plant">✳</div>
+            <div class="avatar" [class]="'avatar-' + agent.avatar" [class.avatar-working]="agentIsWorking(agent.slug)"><span class="avatar-hair"></span><span class="avatar-head"></span><span class="avatar-glasses"></span><span class="avatar-body"></span><span class="avatar-badge"></span><span class="avatar-legs"></span></div>
+            @if (agentIsWorking(agent.slug)) { <div class="work-bubble">•••</div> }
+          </div>
+          <div class="agent-info"><div><b>{{ agent.nombre }}</b><span>{{ agent.rol }}</span></div><span class="agent-state" [class]="stateClass(agent.slug)">{{ stateLabel(agent.slug) }}</span></div>
+          <p>{{ agent.descripcion }}</p>
+          <button type="button" class="agent-history-button" (click)="openAgentHistory(agent)">Ver historial y tareas →</button>
+          @if (agentIsWorking(agent.slug)) {
+            <div class="current-task"><small>TAREA ACTUAL</small><b>{{ activeExecution()?.objetivo || (missionSending() ? 'Coordinar búsqueda comercial: ' + missionRubro() + ' en ' + missionLocalidad() : 'Investigación comercial en curso') }}</b><span>{{ missionSending() ? 'Misión en ejecución…' : 'Iniciada: ' + eventTime(activeExecution()?.fecha_inicio) }}</span></div>
+          }
+        </article>
+      }
+    </div>
+    <div class="floor-footer"><span>● Agente conectado</span><span>○ Agente en preparación</span><span>Los movimientos representan actividad registrada por el sistema.</span></div>
+  </section>
+
+  <div class="office-columns">
+    <section class="office-panel">
+      <div class="panel-heading"><div><h2>Actividad reciente</h2><p>Eventos registrados durante el trabajo de los agentes.</p></div><span class="counter">{{ events().length }}</span></div>
+      @if (events().length === 0) { <div class="office-empty">Todavía no hay eventos. Cuando ejecutes una investigación, vas a verla aparecer acá.</div> }
+      @for (event of events(); track event.id) {
+        <article class="event-row"><span class="event-mark" [class]="event.estado">{{ event.estado === 'success' ? '✓' : event.estado === 'error' ? '!' : '•' }}</span><div><b>{{ event.agente_nombre || 'Agente' }} · {{ event.mensaje }}</b><small>{{ eventTime(event.created_at) }} @if (event.ejecucion_id) { · Ejecución #{{ event.ejecucion_id }} }</small></div></article>
+      }
+    </section>
+    <section class="office-panel">
+      <div class="panel-heading"><div><h2>Registro de tareas</h2><p>Historial de ejecuciones del motor actual.</p></div><span class="counter">{{ executions().length }}</span></div>
+      @if (executions().length === 0) { <div class="office-empty">No hay ejecuciones registradas todavía.</div> }
+      @for (task of executions(); track task.id) {
+        <article class="task-row"><div class="task-top"><b>#{{ task.id }} · {{ task.objetivo || 'Investigación comercial' }}</b><span class="task-status" [class]="task.estado">{{ executionLabel(task.estado) }}</span></div><small>{{ eventTime(task.fecha_inicio || task.created_at) }}</small>@if (task.resultado_resumen) { <p>{{ task.resultado_resumen }}</p> }@if (task.error_detalle) { <p class="task-error">{{ task.error_detalle }}</p> }</article>
+      }
+    </section>
+  </div>
+  @if (selectedAgent(); as agent) {
+    <div class="history-backdrop" (click)="closeAgentHistory()">
+      <section class="history-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'Historial de ' + agent.nombre" (click)="$event.stopPropagation()">
+        <header class="history-header">
+          <div><small class="eyebrow">FICHA DEL EMPLEADO</small><h2>{{ agent.nombre }} · {{ agent.rol }}</h2><p>Historial de tareas y resultados registrados por este agente.</p></div>
+          <button type="button" class="history-close" (click)="closeAgentHistory()" aria-label="Cerrar">×</button>
+        </header>
+        @if (historyLoading()) { <p class="history-state">Cargando historial…</p> }
+        @if (historyError()) { <p class="history-error">{{ historyError() }}</p> }
+        @if (!historyLoading() && !historyError() && agentTasks().length === 0) { <p class="history-state">Todavía no hay tareas registradas para este empleado.</p> }
+        <div class="history-task-list">
+          @for (task of agentTasks(); track task.id) {
+            <button type="button" class="history-task" (click)="openExecutionDetail(task.id)">
+              <span class="history-task-top"><b>#{{ task.id }} · {{ task.objetivo || task.tipo }}</b><span class="task-status" [class]="task.estado">{{ executionLabel(task.estado) }}</span></span>
+              <span class="history-task-summary">{{ task.resultado_resumen || task.error_detalle || 'Sin resumen registrado.' }}</span>
+              <small>{{ eventTime(task.fecha_inicio || task.created_at) }} · {{ task.cantidad_resultados }} resultados · {{ task.cantidad_eventos }} eventos</small>
+              <span class="history-open-label">Ver qué hizo →</span>
+            </button>
+          }
+        </div>
+      </section>
+    </div>
+  }
+
+  @if (selectedExecution(); as execution) {
+    <div class="history-backdrop detail-layer" (click)="closeExecutionDetail()">
+      <section class="history-dialog detail-dialog" role="dialog" aria-modal="true" aria-label="Detalle de ejecución" (click)="$event.stopPropagation()">
+        <header class="history-header">
+          <div><small class="eyebrow">DETALLE DE TAREA · EJECUCIÓN #{{ execution.id }}</small><h2>{{ execution.objetivo }}</h2><p>{{ executionLabel(execution.estado) }} · {{ eventTime(execution.fecha_inicio) }}</p></div>
+          <button type="button" class="history-close" (click)="closeExecutionDetail()" aria-label="Cerrar detalle">×</button>
+        </header>
+        @if (detailLoading()) { <p class="history-state">Cargando detalle…</p> }
+        @if (detailError()) { <p class="history-error">{{ detailError() }}</p> }
+        <div class="detail-summary">
+          <b>Resultado general</b><p>{{ execution.resultado_resumen || execution.error_detalle || 'No hay resumen registrado.' }}</p>
+          @if (execution.parametros) { <small>Parámetros: {{ execution.parametros | json }}</small> }
+        </div>
+        <h3>Trabajo realizado</h3>
+        @if (executionResults().length === 0) { <p class="history-state">Esta ejecución no tiene resultados individuales guardados.</p> }
+        @for (result of executionResults(); track result.id) {
+          <article class="prospect-detail-card">
+            <div class="prospect-detail-heading"><div><small>{{ result.tipo }} · Resultado #{{ result.id }}</small><h4>{{ result.nombre_comercial || result.titulo || 'Resultado sin título' }}</h4></div>
+              @if (result.prospecto_id) { <span class="prospect-id">Prospecto #{{ result.prospecto_id }}</span> }
+            </div>
+            @if (result.nombre_comercial) {
+              <div class="prospect-facts">
+                <span><b>Rubro:</b> {{ result.rubro || 'No informado' }}</span>
+                <span><b>Localidad:</b> {{ result.localidad || 'No informada' }}</span>
+                <span><b>Teléfono:</b> {{ result.telefono || 'No informado' }}</span>
+                <span><b>Email:</b> {{ result.email || 'No informado' }}</span>
+                <span><b>Web:</b> {{ result.sitio_web || 'No informada' }}</span>
+                <span><b>Dirección:</b> {{ result.direccion || 'No informada' }}</span>
+              </div>
+            }
+            @if (result.ada_puntuacion !== null && result.ada_puntuacion !== undefined) {
+              <div class="ada-result-score"><strong>{{ result.ada_puntuacion }}/100</strong><span>Prioridad Ada: {{ result.ada_prioridad }}</span></div>
+              <p><b>Resumen de Ada:</b> {{ result.ada_resumen }}</p>
+              <p><b>Recomendación:</b> {{ result.ada_recomendacion }}</p>
+              @if (result.analisis_ada?.fortalezas) { <div><b>Fortalezas</b><ul>@for (item of result.analisis_ada.fortalezas; track $index) { <li>{{ item }}</li> }</ul></div> }
+              @if (result.analisis_ada?.riesgos) { <div><b>Riesgos</b><ul>@for (item of result.analisis_ada.riesgos; track $index) { <li>{{ item }}</li> }</ul></div> }
+              @if (result.analisis_ada?.datos_faltantes) { <div><b>Datos faltantes</b><ul>@for (item of result.analisis_ada.datos_faltantes; track $index) { <li>{{ item }}</li> }</ul></div> }
+              <small>Confianza declarada por Ada: {{ result.analisis_ada?.confianza || 'No informada' }} · Analizado: {{ eventTime(result.ada_analizado_at) }}</small>
+              @if (result.analisis_ada?._usage) { <small>Modelo: {{ result.analisis_ada._usage.model }} · Tokens: {{ result.analisis_ada._usage.input_tokens }} entrada / {{ result.analisis_ada._usage.output_tokens }} salida · Costo registrado: {{ money(result.analisis_ada._usage.cost_usd) }}</small> }
+              @if (result.datos?.contexto_analizado) {
+                <details class="source-context"><summary>Ver ficha exacta que Ada recibió</summary><pre>{{ result.datos.contexto_analizado | json }}</pre></details>
+              } @else {
+                <p class="history-legacy-note">Esta evaluación es anterior al guardado de la ficha de entrada. Se muestra el resultado conservado, pero no existe una copia histórica exacta de todos los datos que recibió Ada.</p>
+              }
+
+            } @else if (result.datos?.business || result.datos?.analysis) {
+              <p><b>Descripción:</b> {{ result.contenido || result.datos?.analysis?.potencial || 'Sin descripción.' }}</p>
+              @if (result.datos?.analysis) {
+                <div class="prospect-facts">
+                  <span><b>Puntuación Ivo:</b> {{ result.datos.analysis.score ?? result.puntuacion_ivo ?? 'No informada' }}</span>
+                  <span><b>Prioridad:</b> {{ result.datos.analysis.prioridad || result.prioridad_ivo || 'No informada' }}</span>
+                  <span><b>Valoración Google:</b> {{ result.datos.business.rating ?? 'No informada' }}</span>
+                  <span><b>Reseñas:</b> {{ result.datos.business.cantidad_resenas ?? 'No informadas' }}</span>
+                </div>
+                @if (result.datos.analysis.motivos) { <b>Motivos registrados por Ivo</b><ul>@for (item of result.datos.analysis.motivos; track $index) { <li>{{ item }}</li> }</ul> }
+                @if (result.datos.analysis.datos_faltantes) { <b>Datos faltantes identificados por Ivo</b><ul>@for (item of result.datos.analysis.datos_faltantes; track $index) { <li>{{ item }}</li> }</ul> }
+                @if (result.datos.analysis.mensaje_sugerido) { <p><b>Mensaje sugerido por Ivo:</b> {{ result.datos.analysis.mensaje_sugerido }}</p> }
+              }
+            } @else {
+              <p>{{ result.contenido || 'No se guardó contenido descriptivo para este resultado.' }}</p>
+              <details><summary>Ver datos originales guardados</summary><pre>{{ result.datos | json }}</pre></details>
+            }
+          </article>
+        }
+        <h3>Registro cronológico</h3>
+        @for (event of executionEvents(); track event.id) {
+          <div class="detail-event"><span>{{ eventTime(event.created_at) }}</span><b>{{ event.agente_slug }} · {{ event.mensaje }}</b><small>{{ event.detalle | json }}</small></div>
+        }
+      </section>
+    </div>
+  }
+
+  <p class="office-disclaimer">Nora coordina; Ivo investiga; Ada evalúa; Leo prepara borradores comerciales y Mia propone seguimientos. Ningún mensaje se envía automáticamente.</p>
+</div>

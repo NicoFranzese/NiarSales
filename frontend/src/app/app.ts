@@ -6,6 +6,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from './services/auth.service';
 import { AgentService } from './services/agent.service';
 import { ProspectService, Prospect, ProspectActivity } from './services/prospect.service';
+import { VirtualOfficeComponent } from './virtual-office/virtual-office.component';
 
 interface AgentProspect {
   id:number|null; nombre:string; direccion:string; telefono:string|null; telefono_original?:string|null; telefono_tipo?:'celular'|'fijo'|'desconocido'|null; web:string|null;
@@ -13,20 +14,22 @@ interface AgentProspect {
   motivos:string[]; mensaje_sugerido:string;
 }
 @Component({
- selector:'app-root',standalone:true,imports:[FormsModule,CommonModule],templateUrl:'./app.html',styleUrl:'./app.scss'
+ selector:'app-root',standalone:true,imports:[FormsModule,CommonModule,VirtualOfficeComponent],templateUrl:'./app.html',styleUrl:'./app.scss'
 })
 export class App implements OnInit {
  readonly auth=inject(AuthService); private http=inject(HttpClient); private agent=inject(AgentService); private prospectService=inject(ProspectService);
  readonly loading=signal(true);readonly submitting=signal(false);readonly errorMessage=signal('');
  readonly successMessage=signal('');readonly results=signal<AgentProspect[]>([]);
- readonly executionSummary=signal<any>(null);readonly section=signal<'agent'|'prospects'|'clients'>('agent');
+ readonly executionSummary=signal<any>(null);readonly section=signal<'agent'|'prospects'|'clients'|'office'>('office');
  readonly clients=signal<any[]>([]);readonly clientsLoading=signal(false);readonly clientsError=signal('');readonly selectedClient=signal<any|null>(null);readonly clientDetail=signal<any|null>(null);readonly clientSaving=signal(false);readonly clientMessage=signal('');readonly clientError=signal('');
  clientForm:any={nombre:'',razon_social:'',cuit:'',telefono:'',email:'',direccion:'',localidad:'',servicio:'MesAPP',abono_mensual:18000,fecha_alta:new Date().toISOString().slice(0,10),inicio_cobranzas:new Date().toISOString().slice(0,10),estado:'activo',observaciones:''};
  tariffForm:any={importe:18000,vigente_desde:new Date().toISOString().slice(0,10)}; chargeForm:any={periodo:new Date().toISOString().slice(0,7),vencimiento:new Date().toISOString().slice(0,10)}; paymentForm:any={cargo_id:0,importe:0,fecha_pago:new Date().toISOString().slice(0,10),medio:'transferencia',referencia:'',observaciones:''};
  readonly prospects=signal<Prospect[]>([]);readonly prospectsLoading=signal(false);readonly prospectsError=signal('');
  readonly prospectQuery=signal('');readonly prospectLocalidad=signal('');readonly prospectEstado=signal('');
- readonly prospectPrioridad=signal('');readonly prospectPage=signal(1);readonly prospectPages=signal(1);readonly prospectTotal=signal(0);
+ readonly prospectPrioridad=signal('');readonly prospectAdaEstado=signal('');readonly prospectPage=signal(1);readonly prospectPages=signal(1);readonly prospectTotal=signal(0);
  readonly selectedProspect=signal<Prospect|null>(null);readonly activities=signal<ProspectActivity[]>([]);
+ readonly prospectTab=signal<'general'|'agents'|'contact'|'history'>('general');
+ readonly prospectAgentWorks=signal<any[]>([]);readonly prospectAgentResults=signal<any[]>([]);readonly prospectAgentLoading=signal(false);readonly prospectAgentError=signal('');readonly leoBusy=signal(false);readonly miaBusy=signal(false);readonly agentWorkMessage=signal('');
  readonly reviewSummary=signal<any|null>(null);readonly reviewSummaryLoading=signal(false);readonly reviewSummaryError=signal('');readonly reviewSummaryMessage=signal('');
  readonly activityLoading=signal(false);readonly activitySaving=signal(false);readonly activityError=signal('');
  activityType='contacto';activityChannel='whatsapp';activityResult='';activityDetail='';activityMessage='';nextContact='';
@@ -56,6 +59,7 @@ export class App implements OnInit {
   });
  }
  showAgent():void{this.section.set('agent');}
+ showOffice():void{this.section.set('office');}
  showProspects():void{this.section.set('prospects');this.loadProspects();}
  showClients():void{this.section.set('clients');this.loadClients();this.selectedClient.set(null);this.clientDetail.set(null);}
  hasBalance(v:any):boolean{return Number(v)>0;} hasPayments(v:any):boolean{return Number(v)>0;} 
@@ -77,22 +81,46 @@ export class App implements OnInit {
   if(this.prospectLocalidad().trim())filters['localidad']=this.prospectLocalidad().trim();
   if(this.prospectEstado())filters['estado']=this.prospectEstado();
   if(this.prospectPrioridad())filters['prioridad']=this.prospectPrioridad();
+  if(this.prospectAdaEstado())filters['ada_estado']=this.prospectAdaEstado();
   this.prospectService.list(filters).subscribe({
    next:(r:any)=>{this.prospects.set(Array.isArray(r.data)?r.data:[]);this.prospectPage.set(Number(r.pagination?.page||1));this.prospectPages.set(Math.max(1,Number(r.pagination?.pages||1)));this.prospectTotal.set(Number(r.pagination?.total||0));this.prospectsLoading.set(false);},
    error:(e:HttpErrorResponse)=>{this.prospectsLoading.set(false);this.prospectsError.set(e.error?.message||'No se pudieron cargar los prospectos.');}
   });
  }
  searchProspects():void{this.loadProspects(1);}
- clearProspectFilters():void{this.prospectQuery.set('');this.prospectLocalidad.set('');this.prospectEstado.set('');this.prospectPrioridad.set('');this.loadProspects(1);}
+ clearProspectFilters():void{this.prospectQuery.set('');this.prospectLocalidad.set('');this.prospectEstado.set('');this.prospectPrioridad.set('');this.prospectAdaEstado.set('');this.loadProspects(1);}
  openProspect(p:Prospect):void{
-  this.selectedProspect.set(p);this.activities.set([]);this.activityError.set('');this.activityLoading.set(true);
+  this.selectedProspect.set(p);this.prospectTab.set('general');this.activities.set([]);this.activityError.set('');this.activityLoading.set(true);this.loadProspectAgentWork(p.id);
   this.reviewSummary.set(null);this.reviewSummaryError.set('');this.reviewSummaryMessage.set('');this.reviewSummaryLoading.set(false);
   this.activityType='contacto';this.activityChannel='whatsapp';this.activityResult='';this.activityDetail='';this.activityMessage=p.mensaje_sugerido_ia?.trim()||'';this.nextContact='';
   this.phoneTypeDraft=(p.telefono_tipo==='celular'||p.telefono_tipo==='fijo')?p.telefono_tipo:'desconocido';
   this.phoneDraft=p.telefono||p.telefono_original||'';
   this.prospectService.activities(p.id).subscribe({next:(r:any)=>{this.activities.set(Array.isArray(r.data)?r.data:[]);this.activityLoading.set(false);},error:(e:HttpErrorResponse)=>{this.activityError.set(e.error?.message||'No se pudo cargar el historial.');this.activityLoading.set(false);}});
  }
- closeProspect():void{this.selectedProspect.set(null);this.reviewSummary.set(null);}
+ loadProspectAgentWork(id:number):void{
+  this.prospectAgentLoading.set(true);this.prospectAgentError.set('');this.prospectAgentWorks.set([]);this.prospectAgentResults.set([]);
+  this.http.get<any>(`/api/prospects/${id}/agent-work`,{withCredentials:true}).subscribe({next:r=>{this.prospectAgentWorks.set(r.data?.works||[]);this.prospectAgentResults.set(r.data?.results||[]);this.prospectAgentLoading.set(false);},error:e=>{this.prospectAgentError.set(e.error?.message||'No se pudo cargar el historial de agentes.');this.prospectAgentLoading.set(false);}});
+ }
+ runProspectAgent(agent:'leo'|'mia'):void{
+  const p=this.selectedProspect();if(!p)return;
+  const busy=agent==='leo'?this.leoBusy:this.miaBusy;busy.set(true);this.agentWorkMessage.set('');this.prospectAgentError.set('');
+  const path=agent==='leo'?'draft':'plan';
+  this.http.post<any>(`/api/prospects/${p.id}/agents/${agent}/${path}`,{}, {withCredentials:true,headers:{'X-CSRF-Token':this.auth.getCsrfToken()}}).subscribe({
+   next:r=>{busy.set(false);this.agentWorkMessage.set(r.message||'Trabajo guardado en la ficha.');this.loadProspectAgentWork(p.id);if(agent==='leo'&&r.data?.result?.mensaje){this.activityMessage=r.data.result.mensaje;}if(agent==='leo'){this.prospectService.detail(p.id).subscribe(x=>{const updated={...p,...x.data};this.selectedProspect.set(updated);this.prospects.update(items=>items.map(i=>i.id===p.id?{...i,...x.data}:i));});}},
+   error:e=>{busy.set(false);this.prospectAgentError.set(e.error?.message||'No se pudo ejecutar el agente.');}
+  });
+ }
+ useMiaPlan(plan:any):void{
+  if(plan?.no_contactar){this.agentWorkMessage.set('Mia recomienda no contactar este prospecto.');return;}
+  if(plan?.mensaje)this.activityMessage=String(plan.mensaje);
+  if(plan?.canal)this.activityChannel=String(plan.canal);
+  this.activityType='seguimiento';
+  if(plan?.fecha_sugerida)this.nextContact=String(plan.fecha_sugerida)+'T10:00';
+  this.agentWorkMessage.set('Plan de Mia cargado en el formulario. Revisá la fecha y el mensaje antes de registrar la actividad.');
+ }
+ copyAgentMessage(message:string):void{if(!message)return;const clipboard=navigator.clipboard;if(!clipboard){this.agentWorkMessage.set('El navegador no permite copiar automáticamente; seleccioná el texto para copiarlo.');return;}clipboard.writeText(message).then(()=>this.agentWorkMessage.set('Mensaje copiado.')).catch(()=>this.agentWorkMessage.set('No se pudo copiar automáticamente; seleccioná el texto para copiarlo.'));}
+ setProspectTab(tab:'general'|'agents'|'contact'|'history'):void{this.prospectTab.set(tab);}
+ closeProspect():void{this.selectedProspect.set(null);this.reviewSummary.set(null);this.prospectAgentWorks.set([]);this.prospectAgentResults.set([]);this.agentWorkMessage.set('');this.prospectAgentError.set('');}
  loadReviewSummary():void{const p=this.selectedProspect();if(!p||!p.google_place_id)return;this.reviewSummaryLoading.set(true);this.reviewSummaryError.set('');this.reviewSummaryMessage.set('');this.reviewSummary.set(null);this.prospectService.reviewSummary(p.id).subscribe({next:(r:any)=>{this.reviewSummaryLoading.set(false);this.reviewSummary.set(r.data||null);this.reviewSummaryMessage.set(r.message||'Consulta finalizada.');},error:(e:HttpErrorResponse)=>{this.reviewSummaryLoading.set(false);this.reviewSummaryError.set(e.error?.message||'No se pudo consultar Google.');}});}
  useSuggestedMessage():void{const p=this.selectedProspect();if(p?.mensaje_sugerido_ia)this.activityMessage=p.mensaje_sugerido_ia;}
  previousProspects():void{if(this.prospectPage()>1)this.loadProspects(this.prospectPage()-1);}
