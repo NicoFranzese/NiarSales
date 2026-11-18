@@ -98,7 +98,7 @@
 
   <section class="office-floor office-floor-3d" aria-label="Oficina virtual tridimensional">
     <div class="floor-topline"><span>NIARSALES HQ · OFICINA INTERACTIVA</span><span>3D · ISOMÉTRICA</span></div>
-    <app-office-3d [agents]="agents()" [workingSlugs]="workingSlugs()" (agentSelected)="openAgentHistoryBySlug($event)"></app-office-3d>
+    <app-office-3d [agents]="agents()" [workingSlugs]="workingSlugs()" [founderActionRequest]="founderActionRequest()" (agentSelected)="openAgentHistoryBySlug($event)"></app-office-3d>
     <div class="floor-footer"><span>● Actividad real conectada</span><span>Click en un personaje para ver su historial</span><span>Scroll para acercar o alejar · Arrastrá para rotar</span></div>
   </section>
 
@@ -118,6 +118,24 @@
       }
     </section>
   </div>
+
+  @if (selectedFounder(); as founder) {
+    @if (founderMenuVisible()) {
+    <div class="founder-menu-backdrop" (click)="closeFounderMenu()">
+      <section class="founder-menu" (click)="$event.stopPropagation()" aria-label="Acciones del fundador">
+        <header><div class="founder-avatar" [class.ara]="founder === 'ara'">{{ founder === 'nico' ? 'N' : 'A' }}</div><div><small>NIARSALES HQ · PERSONA</small><strong>{{ founderDisplayName(founder) }}</strong><span>{{ founderStatus()[founder] }}</span></div><button type="button" (click)="closeFounderMenu()" aria-label="Cerrar">×</button></header>
+        <p>¿Qué querés que haga?</p>
+        <div class="founder-actions">
+          <button type="button" (click)="founderAction('work')"><span>💻</span><b>Trabajar</b><small>Ir a su oficina</small></button>
+          <button type="button" (click)="founderAction('rest')"><span>🛋️</span><b>Descansar</b><small>Ir al living</small></button>
+          <button type="button" (click)="founderAction('kitchen')"><span>☕</span><b>Cocina</b><small>Tomar un descanso</small></button>
+          <button type="button" (click)="founderAction('bathroom')"><span>🚻</span><b>Baño</b><small>Ir al baño</small></button>
+          <button type="button" (click)="founderAction('meeting')"><span>🗣️</span><b>Reunión</b><small>Sala de reuniones</small></button>
+        </div>
+      </section>
+    </div>
+    }
+  }
   @if (selectedAgent(); as agent) {
     <div class="history-backdrop" (click)="closeAgentHistory()">
       <section class="history-dialog" role="dialog" aria-modal="true" [attr.aria-label]="'Historial de ' + agent.nombre" (click)="$event.stopPropagation()">

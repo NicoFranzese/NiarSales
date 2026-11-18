@@ -57,6 +57,11 @@ export class VirtualOfficeComponent {
   readonly budget = signal<BudgetStatus | null>(null);
   readonly budgetError = signal('');
   readonly selectedAgent = signal<any | null>(null);
+  readonly selectedFounder = signal<'nico' | 'ara' | null>(null);
+  readonly founderMenuVisible = signal(false);
+  readonly founderStatus = signal<Record<'nico'|'ara', string>>({ nico: 'Disponible', ara: 'Disponible' });
+  readonly founderActionRequest = signal<{person:'nico'|'ara'; destination:string; nonce:number} | null>(null);
+  private founderActionNonce = 0;
   readonly agentTasks = signal<any[]>([]);
   readonly historyLoading = signal(false);
   readonly historyError = signal('');
@@ -112,8 +117,18 @@ export class VirtualOfficeComponent {
   }
 
   openAgentHistoryBySlug(slug: string): void {
+    if (slug === 'founder:nico' || slug === 'founder:ara') { this.selectedFounder.set(slug.split(':')[1] as 'nico'|'ara'); this.founderMenuVisible.set(true); return; }
     const agent = this.agents().find(a => a.slug === slug);
     if (agent) this.openAgentHistory(agent);
+  }
+  founderDisplayName(person: 'nico'|'ara'): string { return person === 'nico' ? 'Nico' : 'Ara'; }
+  closeFounderMenu(): void { this.founderMenuVisible.set(false); this.selectedFounder.set(null); }
+  founderAction(destination: string): void {
+    const person = this.selectedFounder(); if (!person) return;
+    const labels: Record<string,string> = { work:'Trabajando', rest:'Descansando', kitchen:'En la cocina', bathroom:'En el baño', meeting:'En reunión' };
+    this.founderStatus.update(v => ({...v, [person]: labels[destination] || 'En movimiento'}));
+    this.founderActionRequest.set({person, destination, nonce: ++this.founderActionNonce});
+    this.closeFounderMenu();
   }
 
   isEnabled(value: unknown): boolean { return value === 1 || value === '1' || value === true; }
