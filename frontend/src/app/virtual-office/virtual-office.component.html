@@ -96,29 +96,10 @@
     } @else if (!budgetError()) { <p class="budget-loading">Consultando presupuesto y consumo...</p> }
   </section>
 
-  <section class="office-floor" aria-label="Plano de la oficina de agentes">
-    <div class="floor-topline"><span>PLANTA PRINCIPAL</span><span>NIARSALES HQ · V2</span></div>
-    <div class="office-grid">
-      @for (agent of agents(); track agent.slug) {
-        <article class="room" [class.room-active]="agentIsWorking(agent.slug)" [class.room-planned]="!isEnabled(agent.habilitado)">
-          <div class="room-label"><span>{{ agent.sala }}</span><span class="room-status" [class]="stateClass(agent.slug)">{{ stateLabel(agent.slug) }}</span></div>
-          <div class="room-scene">
-            <div class="window-light"></div>
-            <div class="desk"><div class="monitor"><i></i><i></i><i></i></div><div class="desk-top"></div><div class="desk-leg"></div></div>
-            <div class="plant">✳</div>
-            <div class="avatar" [class]="'avatar-' + agent.avatar" [class.avatar-working]="agentIsWorking(agent.slug)"><span class="avatar-hair"></span><span class="avatar-head"></span><span class="avatar-glasses"></span><span class="avatar-body"></span><span class="avatar-badge"></span><span class="avatar-legs"></span></div>
-            @if (agentIsWorking(agent.slug)) { <div class="work-bubble">•••</div> }
-          </div>
-          <div class="agent-info"><div><b>{{ agent.nombre }}</b><span>{{ agent.rol }}</span></div><span class="agent-state" [class]="stateClass(agent.slug)">{{ stateLabel(agent.slug) }}</span></div>
-          <p>{{ agent.descripcion }}</p>
-          <button type="button" class="agent-history-button" (click)="openAgentHistory(agent)">Ver historial y tareas →</button>
-          @if (agentIsWorking(agent.slug)) {
-            <div class="current-task"><small>TAREA ACTUAL</small><b>{{ activeExecution()?.objetivo || (missionSending() ? 'Coordinar búsqueda comercial: ' + missionRubro() + ' en ' + missionLocalidad() : 'Investigación comercial en curso') }}</b><span>{{ missionSending() ? 'Misión en ejecución…' : 'Iniciada: ' + eventTime(activeExecution()?.fecha_inicio) }}</span></div>
-          }
-        </article>
-      }
-    </div>
-    <div class="floor-footer"><span>● Agente conectado</span><span>○ Agente en preparación</span><span>Los movimientos representan actividad registrada por el sistema.</span></div>
+  <section class="office-floor office-floor-3d" aria-label="Oficina virtual tridimensional">
+    <div class="floor-topline"><span>NIARSALES HQ · OFICINA INTERACTIVA</span><span>3D · ISOMÉTRICA</span></div>
+    <app-office-3d [agents]="agents()" [workingSlugs]="workingSlugs()" (agentSelected)="openAgentHistoryBySlug($event)"></app-office-3d>
+    <div class="floor-footer"><span>● Actividad real conectada</span><span>Click en un personaje para ver su historial</span><span>Scroll para acercar o alejar · Arrastrá para rotar</span></div>
   </section>
 
   <div class="office-columns">

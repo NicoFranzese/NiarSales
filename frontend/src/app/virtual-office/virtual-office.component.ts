@@ -3,6 +3,7 @@ import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../services/auth.service';
+import { Office3DComponent } from './office-3d/office-3d.component';
 import { timer, switchMap, catchError, of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -20,7 +21,7 @@ interface OfficeAgent {
 @Component({
   selector: 'app-virtual-office',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, Office3DComponent],
   templateUrl: './virtual-office.component.html',
   styleUrl: './virtual-office.component.scss'
 })
@@ -104,6 +105,15 @@ export class VirtualOfficeComponent {
     if (slug === 'ventas') return task.parametros?.agente === 'ventas';
     if (slug === 'seguimiento') return task.parametros?.agente === 'seguimiento';
     return false;
+  }
+
+  workingSlugs(): string[] {
+    return this.agents().filter(a => this.agentIsWorking(a.slug)).map(a => a.slug);
+  }
+
+  openAgentHistoryBySlug(slug: string): void {
+    const agent = this.agents().find(a => a.slug === slug);
+    if (agent) this.openAgentHistory(agent);
   }
 
   isEnabled(value: unknown): boolean { return value === 1 || value === '1' || value === true; }

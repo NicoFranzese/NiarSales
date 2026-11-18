@@ -57,3 +57,19 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+
+## Oficina virtual 3D (NiarSales HQ)
+
+La oficina visual se renderiza con Three.js dentro del componente Angular `office-3d`.
+Incluye espacios para Nora, Ivo, Ada, Leo, Mia, los fundadores, living, cocina y patio;
+Mapu y Puchu tienen movimiento ambiental independiente. Los agentes se pueden seleccionar
+para abrir su historial real desde la oficina.
+
+Instalación de dependencias:
+```bash
+npm install
+npm start
+```
+
+Controles de escena: arrastrar para rotar, rueda para zoom, clic en un agente para abrir su historial.
